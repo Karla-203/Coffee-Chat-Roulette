@@ -42,7 +42,8 @@ export default function CoffeeChatRoulette() {
     const fixedPairs = fixedMatches
       .split("\n")
       .map(line => line.split(",").map(name => name.trim()))
-      .filter(pair => pair.length === 2) as [string, string][];
+      .filter(pair => pair.length === 2)
+      .map(pair => [pair[0], pair[1]] as [string, string]);
 
     // Normalize fixed names
     const fixedNames = new Set(fixedPairs.flat().map(name => name.toLowerCase()));
