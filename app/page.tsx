@@ -44,8 +44,6 @@ export default function CoffeeChatRoulette() {
       .map(line => line.split(",").map(name => name.trim()))
       .filter((pair): pair is [string, string] => pair.length === 2);
     
-    const used = new Set<string>();
-    
     // ✅ Mark fixed pair participants as used
     fixedPairs.forEach(([a, b]) => {
       used.add(a);
