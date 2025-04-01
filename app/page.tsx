@@ -39,11 +39,11 @@ export default function CoffeeChatRoulette() {
     const json: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet);
 
     // Process fixed matches
-    const fixedPairs = fixedMatches
+    const fixedPairs: [string, string][] = fixedMatches
       .split("\n")
       .map(line => line.split(",").map(name => name.trim()))
-      .filter(pair => pair.length === 2)
-      .map(pair => [pair[0], pair[1]] as [string, string]);
+      .filter((pair): pair is [string, string] => pair.length === 2);
+
 
     // Normalize fixed names
     const fixedNames = new Set(fixedPairs.flat().map(name => name.toLowerCase()));
