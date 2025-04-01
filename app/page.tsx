@@ -44,37 +44,22 @@ export default function CoffeeChatRoulette() {
     .map(line => line.split(",").map(name => name.trim()))
     .filter((pair): pair is [string, string] => pair.length === 2);
 
-  // Declare used early so we can use it right away
-  const used = new Set<string>();
-
-  // Mark fixed pair participants as used
+  // Create a Set of all individuals involved in fixed matches (case-insensitive)
+  const fixedIndividuals = new Set<string>();
   fixedPairs.forEach(([a, b]) => {
-    used.add(a);
-    used.add(b);
+    fixedIndividuals.add(a.toLowerCase());
+    fixedIndividuals.add(b.toLowerCase());
   });
 
-  // Normalize fixed names (for filtering the JSON list)
-  const fixedNames = new Set(fixedPairs.flat().map(name => name.toLowerCase()));
-
-  // Build past matches map
-  const pastMatchesMap: Record<string, string[]> = {};
-  json.forEach((person: Record<string, any>) => {
-    const matches: string[] = [];
-    for (let i = 1; i <= 5; i++) {
-      const match = person[`Previous match #${i}`];
-      if (match) matches.push(match);
-    }
-    pastMatchesMap[person["Staff Name"]] = matches;
-  });
-
-  // Exclude fixed participants from random match pool
+  // Filter out fixed individuals from the initial list for random matching
   const remaining = json.filter((p: Record<string, any>) =>
-    !fixedNames.has(p["Staff Name"].toLowerCase())
+    !fixedIndividuals.has(p["Staff Name"].toLowerCase())
   );
 
   const shuffled = [...remaining].sort(() => 0.5 - Math.random());
 
   const matches: Match[] = [];
+  const used = new Set<string>(); // Keep track of randomly matched individuals
   const unmatched: string[] = [];
 
   for (let i = 0; i < shuffled.length; i++) {
@@ -103,10 +88,12 @@ export default function CoffeeChatRoulette() {
       }
     }
 
-    if (!found) unmatched.push(name1);
+    if (!found && !used.has(name1)) { // Ensure unmatched person wasn't already fixed
+      unmatched.push(name1);
+    }
   }
 
-  // Combine fixed, matched, and unmatched
+  // Combine fixed matches with the randomly generated matches and unmatched
   const allMatches: Match[] = [
     ...fixedPairs.map(([a, b]) => ({ "Person 1": a, "Person 2": b })),
     ...matches,
