@@ -51,6 +51,17 @@ export default function CoffeeChatRoulette() {
     fixedIndividuals.add(b.toLowerCase());
   });
 
+  // Build past matches map
+  const pastMatchesMap: Record<string, string[]> = {};
+  json.forEach((person: Record<string, any>) => {
+    const matches: string[] = [];
+    for (let i = 1; i <= 5; i++) {
+      const match = person[`Previous match #${i}`];
+      if (match) matches.push(match);
+    }
+    pastMatchesMap[person["Staff Name"]] = matches;
+  });
+
   // Filter out fixed individuals from the initial list for random matching
   const remaining = json.filter((p: Record<string, any>) =>
     !fixedIndividuals.has(p["Staff Name"].toLowerCase())
