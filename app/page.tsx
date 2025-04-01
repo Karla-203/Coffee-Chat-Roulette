@@ -51,20 +51,23 @@ export default function CoffeeChatRoulette() {
     fixedIndividuals.add(b.toLowerCase());
   });
 
-  // Build past matches map
+  // Build past matches map (normalize names to lowercase and trim whitespace)
   const pastMatchesMap: Record<string, string[]> = {};
   json.forEach((person: Record<string, any>) => {
-    const matches: string[] = [];
-    for (let i = 1; i <= 5; i++) {
-      const match = person[`Previous match #${i}`];
-      if (match) matches.push(match);
+    const staffName = person["Staff Name"]?.trim();
+    if (staffName) {
+      const matches: string[] = [];
+      for (let i = 1; i <= 5; i++) {
+        const match = person[`Previous match #${i}`]?.trim();
+        if (match) matches.push(match.toLowerCase());
+      }
+      pastMatchesMap[staffName.toLowerCase()] = matches;
     }
-    pastMatchesMap[person["Staff Name"]] = matches;
   });
 
   // Filter out fixed individuals from the initial list for random matching
   const remaining = json.filter((p: Record<string, any>) =>
-    !fixedIndividuals.has(p["Staff Name"].toLowerCase())
+    !fixedIndividuals.has(p["Staff Name"]?.trim()?.toLowerCase())
   );
 
   const shuffled = [...remaining].sort(() => 0.5 - Math.random());
@@ -75,20 +78,20 @@ export default function CoffeeChatRoulette() {
 
   for (let i = 0; i < shuffled.length; i++) {
     const person1 = shuffled[i];
-    const name1 = person1["Staff Name"];
-    if (used.has(name1)) continue;
+    const name1 = person1["Staff Name"]?.trim();
+    if (!name1 || used.has(name1)) continue;
 
     let found = false;
     for (let j = i + 1; j < shuffled.length; j++) {
       const person2 = shuffled[j];
-      const name2 = person2["Staff Name"];
-      if (used.has(name2)) continue;
+      const name2 = person2["Staff Name"]?.trim();
+      if (!name2 || used.has(name2)) continue;
 
       const notSameTeam = person1["Team #"] !== person2["Team #"];
       const notSameSite = person1["Site"] !== person2["Site"];
       const notPastMatch =
-        !pastMatchesMap[name1]?.includes(name2) &&
-        !pastMatchesMap[name2]?.includes(name1);
+        !pastMatchesMap[name1.toLowerCase()]?.includes(name2.toLowerCase()) &&
+        !pastMatchesMap[name2.toLowerCase()]?.includes(name1.toLowerCase());
 
       if (notSameTeam && notSameSite && notPastMatch) {
         matches.push({ "Person 1": name1, "Person 2": name2 });
@@ -106,7 +109,7 @@ export default function CoffeeChatRoulette() {
 
   // Combine fixed matches with the randomly generated matches and unmatched
   const allMatches: Match[] = [
-    ...fixedPairs.map(([a, b]) => ({ "Person 1": a, "Person 2": b })),
+    ...fixedPairs.map(([a, b]) => ({ "Person 1": a.trim(), "Person 2": b.trim() })),
     ...matches,
     ...unmatched.map(name => ({ "Person 1": name, "Person 2": "" })),
   ];
