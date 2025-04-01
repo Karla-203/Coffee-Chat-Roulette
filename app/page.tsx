@@ -30,90 +30,92 @@ export default function CoffeeChatRoulette() {
     setFile(selectedFile);
   };
 
-  const handleGenerate = async () => {
-    if (!file) return;
+ const handleGenerate = async () => {
+  if (!file) return;
 
-    const data = await file.arrayBuffer();
-    const workbook = XLSX.read(data);
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const json: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet);
+  const data = await file.arrayBuffer();
+  const workbook = XLSX.read(data);
+  const sheet = workbook.Sheets[workbook.SheetNames[0]];
+  const json: Record<string, any>[] = XLSX.utils.sheet_to_json(sheet);
 
-    // Process fixed matches
-    const fixedPairs: [string, string][] = fixedMatches
-      .split("\n")
-      .map(line => line.split(",").map(name => name.trim()))
-      .filter((pair): pair is [string, string] => pair.length === 2);
-    
-    // ✅ Mark fixed pair participants as used
-    fixedPairs.forEach(([a, b]) => {
-      used.add(a);
-      used.add(b);
-    });
-    
-    // ✅ Normalize fixed names (for filtering the JSON list)
-    const fixedNames = new Set(fixedPairs.flat().map(name => name.toLowerCase()));
-    
+  // Process fixed matches
+  const fixedPairs: [string, string][] = fixedMatches
+    .split("\n")
+    .map(line => line.split(",").map(name => name.trim()))
+    .filter((pair): pair is [string, string] => pair.length === 2);
 
-    // Build past matches map
-    const pastMatchesMap: Record<string, string[]> = {};
-    json.forEach((person: Record<string, any>) => {
-      const matches: string[] = [];
-      for (let i = 1; i <= 5; i++) {
-        const match = person[`Previous match #${i}`];
-        if (match) matches.push(match);
+  // Declare used early so we can use it right away
+  const used = new Set<string>();
+
+  // Mark fixed pair participants as used
+  fixedPairs.forEach(([a, b]) => {
+    used.add(a);
+    used.add(b);
+  });
+
+  // Normalize fixed names (for filtering the JSON list)
+  const fixedNames = new Set(fixedPairs.flat().map(name => name.toLowerCase()));
+
+  // Build past matches map
+  const pastMatchesMap: Record<string, string[]> = {};
+  json.forEach((person: Record<string, any>) => {
+    const matches: string[] = [];
+    for (let i = 1; i <= 5; i++) {
+      const match = person[`Previous match #${i}`];
+      if (match) matches.push(match);
+    }
+    pastMatchesMap[person["Staff Name"]] = matches;
+  });
+
+  // Exclude fixed participants from random match pool
+  const remaining = json.filter((p: Record<string, any>) =>
+    !fixedNames.has(p["Staff Name"].toLowerCase())
+  );
+
+  const shuffled = [...remaining].sort(() => 0.5 - Math.random());
+
+  const matches: Match[] = [];
+  const unmatched: string[] = [];
+
+  for (let i = 0; i < shuffled.length; i++) {
+    const person1 = shuffled[i];
+    const name1 = person1["Staff Name"];
+    if (used.has(name1)) continue;
+
+    let found = false;
+    for (let j = i + 1; j < shuffled.length; j++) {
+      const person2 = shuffled[j];
+      const name2 = person2["Staff Name"];
+      if (used.has(name2)) continue;
+
+      const notSameTeam = person1["Team #"] !== person2["Team #"];
+      const notSameSite = person1["Site"] !== person2["Site"];
+      const notPastMatch =
+        !pastMatchesMap[name1]?.includes(name2) &&
+        !pastMatchesMap[name2]?.includes(name1);
+
+      if (notSameTeam && notSameSite && notPastMatch) {
+        matches.push({ "Person 1": name1, "Person 2": name2 });
+        used.add(name1);
+        used.add(name2);
+        found = true;
+        break;
       }
-      pastMatchesMap[person["Staff Name"]] = matches;
-    });
-
-    // Exclude fixed participants from random match pool
-    const remaining = json.filter((p: Record<string, any>) =>
-      !fixedNames.has(p["Staff Name"].toLowerCase())
-    );
-
-    const shuffled = [...remaining].sort(() => 0.5 - Math.random());
-
-    const used = new Set<string>();
-    const matches: Match[] = [];
-    const unmatched: string[] = [];
-
-    for (let i = 0; i < shuffled.length; i++) {
-      const person1 = shuffled[i];
-      const name1 = person1["Staff Name"];
-      if (used.has(name1)) continue;
-
-      let found = false;
-      for (let j = i + 1; j < shuffled.length; j++) {
-        const person2 = shuffled[j];
-        const name2 = person2["Staff Name"];
-        if (used.has(name2)) continue;
-
-        const notSameTeam = person1["Team #"] !== person2["Team #"];
-        const notSameSite = person1["Site"] !== person2["Site"];
-        const notPastMatch =
-          !pastMatchesMap[name1]?.includes(name2) &&
-          !pastMatchesMap[name2]?.includes(name1);
-
-        if (notSameTeam && notSameSite && notPastMatch) {
-          matches.push({ "Person 1": name1, "Person 2": name2 });
-          used.add(name1);
-          used.add(name2);
-          found = true;
-          break;
-        }
-      }
-
-      if (!found) unmatched.push(name1);
     }
 
-    // Combine fixed, matched, and unmatched
-    const allMatches: Match[] = [
-      ...fixedPairs.map(([a, b]) => ({ "Person 1": a, "Person 2": b })),
-      ...matches,
-      ...unmatched.map(name => ({ "Person 1": name, "Person 2": "" })),
-    ];
+    if (!found) unmatched.push(name1);
+  }
 
-    setOutput(allMatches);
-  };
+  // Combine fixed, matched, and unmatched
+  const allMatches: Match[] = [
+    ...fixedPairs.map(([a, b]) => ({ "Person 1": a, "Person 2": b })),
+    ...matches,
+    ...unmatched.map(name => ({ "Person 1": name, "Person 2": "" })),
+  ];
+
+  setOutput(allMatches);
+};
+
 
   const downloadMatches = () => {
     const worksheet = XLSX.utils.json_to_sheet(output);
