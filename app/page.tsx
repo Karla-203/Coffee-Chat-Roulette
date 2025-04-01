@@ -43,10 +43,18 @@ export default function CoffeeChatRoulette() {
       .split("\n")
       .map(line => line.split(",").map(name => name.trim()))
       .filter((pair): pair is [string, string] => pair.length === 2);
-
-
-    // Normalize fixed names
+    
+    const used = new Set<string>();
+    
+    // ✅ Mark fixed pair participants as used
+    fixedPairs.forEach(([a, b]) => {
+      used.add(a);
+      used.add(b);
+    });
+    
+    // ✅ Normalize fixed names (for filtering the JSON list)
     const fixedNames = new Set(fixedPairs.flat().map(name => name.toLowerCase()));
+    
 
     // Build past matches map
     const pastMatchesMap: Record<string, string[]> = {};
